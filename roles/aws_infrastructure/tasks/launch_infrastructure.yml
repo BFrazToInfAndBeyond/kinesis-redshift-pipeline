@@ -1,0 +1,47 @@
+---
+- name: template redshift cluster script
+  template: src=../templates/redshift_cluster.py.j2 dest=/tmp/redshift_cluster.py
+
+- name: create redshift cluster
+  shell: python /tmp/redshift_cluster.py
+
+- name: template delivery_stream script
+  template: src=../templates/delivery_stream.py.j2 dest=/tmp/delivery_stream.py
+
+- name: create delivery stream
+  shell: python /tmp/delivery_stream.py
+
+- get_jdbc:
+    cluster_id: "{{ cluster_id }}"
+    vpc_id: "{{ vpc_id }}"
+    db_name: "{{ db_name }}"
+    region: "{{ region }}"
+  register: jdbc_results
+
+- name: create nifi instance
+  ec2:
+    region: "{{ region }}"
+    key_name: "{{ key_name }}"
+    instance_type: "{{ instance_type }}"
+    image: "{{ ami }}"
+    group_id: "{{ sg_ids[0] }}"
+    wait: yes
+    wait_timeout: 500
+    vpc_subnet_id: "{{ vpc_subnet_ids[0] }}"
+    assign_public_ip: yes
+    instance_tags:
+      Name: "nifi"
+    count_tag:
+      Name: "nifi"
+    exact_count: 1
+  register: our_ec2
+
+- name: Wait for SSH ports
+  wait_for: host={{ our_ec2.tagged_instances[0].public_ip }} port=22 delay=20 timeout=500 state=started
+
+- name: Add instance to nifi group
+  add_host:
+    name: "{{ our_ec2.tagged_instances[0].public_ip }}"
+    ansible_ssh_private_key_file: "{{ keypair_file_name }}"
+    ansible_host_key_checking: False
+    groups: "nifi"

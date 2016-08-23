@@ -1,0 +1,178 @@
+import boto3
+import time
+
+CLUSTER_SUBNET_GROUP_NAME='redshift-cluster-subgroup'
+SUBNET_IDS = {{vpc_subnet_ids}}
+SG_IDS = {{sg_ids}}
+AVAILABILITY_ZONE='{{subnet.az}}'
+DB_NAME = '{{db_name}}'
+CLUSTER_ID = '{{cluster_id}}'
+MASTER_USERNAME = '{{master_username}}'
+MASTER_PASSWORD = '{{master_password}}'
+VPC_ID = '{{vpc_id}}'
+REGION = '{{region}}'
+STATE = '{{state}}'
+
+
+def describe_cluster(client, cluster_id):
+    response = client.describe_clusters(
+        ClusterIdentifier=cluster_id,
+        MaxRecords=20,
+        TagKeys=[
+            'name',
+        ],
+        TagValues=[
+            'redshift_automated',
+        ]
+    )
+    return response
+
+
+def is_cluster_running(client, cluster_id, vpc_id):
+    cluster_running = False
+    try:
+        response = describe_cluster(client, cluster_id)
+        clusters = response['Clusters']
+        print clusters
+        i = 0
+
+        while(not cluster_running and i < len(clusters)):
+            cluster = clusters[i]
+            print cluster
+            if cluster['VpcId'] == vpc_id and cluster['ClusterIdentifier'] == cluster_id:
+                if cluster['ClusterStatus'] == 'available':
+                    cluster_running = True
+            i += 1
+            print cluster
+    except:
+        print 'cluster does not exist'
+    finally:
+        return cluster_running
+
+
+def is_subnet_running(client, cluster_subnet_group_name, vpc_id):
+
+    cluster_subnet_groups = client.describe_cluster_subnet_groups(
+        ClusterSubnetGroupName=cluster_subnet_group_name,
+        MaxRecords=20,
+        TagKeys=[
+            'name',
+        ],
+        TagValues=[
+            cluster_subnet_group_name
+        ]
+    )
+    print cluster_subnet_groups
+    print cluster_subnet_groups['ClusterSubnetGroups']
+    subnets = cluster_subnet_groups['ClusterSubnetGroups']
+    i = 0
+    subnet_running = False
+    while(not subnet_running and i < len(subnets)):
+        subnet = subnets[i]
+        if subnet['VpcId'] == vpc_id and subnet['ClusterSubnetGroupName'] == cluster_subnet_group_name and subnet['SubnetGroupStatus'] == 'Complete':
+            subnet_running = True
+    return subnet_running
+
+
+def delete_cluster_subnet_group(client, cluster_subnet_group_name):
+    try:
+        response = client.delete_cluster_subnet_group(
+            ClusterSubnetGroupName=cluster_subnet_group_name
+        )
+    except:
+        print 'cluster subnet has already been deleted'
+
+
+def delete_cluster(client, cluster_id, vpc_id):
+    try:
+        response = client.delete_cluster(
+            ClusterIdentifier=cluster_id,
+            SkipFinalClusterSnapshot=True,
+        )
+
+    except:
+        print 'cluster has already been deleted'
+    finally:
+        try:
+            while is_cluster_running(client, cluster_id, vpc_id):
+                time.sleep(30)
+        except:
+            print 'cluster has been deleted'
+
+
+
+def create_cluster_subnet_group(client, cluster_subnet_group_name, subnet_ids):
+    try:
+        response = client.create_cluster_subnet_group(
+            ClusterSubnetGroupName=cluster_subnet_group_name,
+            Description='the subgroup for our redshift cluster',
+            SubnetIds=subnet_ids,
+            Tags=[
+                {
+                    'Key': 'name',
+                    'Value': cluster_subnet_group_name
+                },
+            ]
+        )
+
+        print response
+    except:
+        print 'cluster subnet group already running'
+
+
+def create_cluster(client, db_name, cluster_id, master_username, master_password, security_group_ids,
+                    cluster_subnet_group_name, availability_zone, vpc_id):
+    try:
+        #if it already exists, it throws error
+        response = client.create_cluster(
+            DBName=db_name,
+            ClusterIdentifier=cluster_id,
+            ClusterType='single-node',
+            NodeType='ds1.xlarge',
+            MasterUsername=master_username,
+            MasterUserPassword=master_password,
+            #    ClusterSecurityGroups=[
+            #        'string',
+            #    ],
+            VpcSecurityGroupIds=security_group_ids,
+            ClusterSubnetGroupName=cluster_subnet_group_name,
+            AvailabilityZone=availability_zone,
+            AutomatedSnapshotRetentionPeriod=0,
+            Port=5439,
+            ClusterVersion='1.0',
+            PubliclyAccessible=True,
+            Encrypted=False,
+            Tags=[
+                {
+                    'Key': 'name',
+                    'Value': 'redshift_automated'
+                },
+            ],
+            IamRoles=['arn:aws:iam::628340790701:role/redshift_role']
+
+                #  {
+                # 'IamRoleArn': 'arn:aws:iam::628340790701:role/redshift_role', #NOTE: 2 policies: AmazonDMSRedshiftS3Role, AmazonS3FullAccess. Already created
+                # 'ApplyStatus': 'in-sync'
+                # }
+
+
+        )
+
+    except:
+        print 'cluster already exists'
+    finally:
+        cluster_running = False
+        while not cluster_running:
+            time.sleep(30)
+            cluster_running = is_cluster_running(client, cluster_id, vpc_id)
+
+
+if __name__ == "__main__":
+  client = boto3.client('redshift', region_name=REGION)
+  if STATE == 'present':
+      create_cluster_subnet_group(client, CLUSTER_SUBNET_GROUP_NAME, SUBNET_IDS)
+      create_cluster(client, DB_NAME, CLUSTER_ID, MASTER_USERNAME, MASTER_PASSWORD, SG_IDS,
+                      CLUSTER_SUBNET_GROUP_NAME, AVAILABILITY_ZONE, VPC_ID)
+  elif STATE == 'absent':
+      delete_cluster(client, CLUSTER_ID, VPC_ID)
+      delete_cluster_subnet_group(client, CLUSTER_SUBNET_GROUP_NAME)

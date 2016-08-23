@@ -1,0 +1,13 @@
+---
+- name: Create Infrastructure
+  hosts: localhost
+  connection: local
+  roles:
+    - aws_infrastructure
+
+- name: Configure nifi
+  hosts: nifi
+  sudo: true
+  remote_user: "{{ default_remote_user }}"
+  roles:
+    - nifi

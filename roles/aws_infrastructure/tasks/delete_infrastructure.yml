@@ -1,0 +1,29 @@
+---
+- name: template redshift cluster script
+  template: src=../templates/redshift_cluster.py.j2 dest=/tmp/redshift_cluster.py
+
+- name: delete cluster
+  shell: python /tmp/redshift_cluster.py
+
+- name: template delivery_stream script
+  template: src=../templates/delivery_stream.py.j2 dest=/tmp/delivery_stream.py
+
+- name: delete delivery stream
+  shell: python /tmp/delivery_stream.py
+
+- name: delete nifi instance
+  ec2:
+    region: "{{ region }}"
+    key_name: "{{ key_name }}"
+    instance_type: "{{ instance_type }}"
+    image: "{{ ami }}"
+    group_id: "{{ sg_ids[0] }}"
+    wait: yes
+    wait_timeout: 500
+    vpc_subnet_id: "{{ vpc_subnet_ids[0] }}"
+    assign_public_ip: yes
+    instance_tags:
+      Name: "nifi"
+    count_tag:
+      Name: "nifi"
+    exact_count: 0

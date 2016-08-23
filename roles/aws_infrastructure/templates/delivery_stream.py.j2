@@ -1,0 +1,130 @@
+import boto3
+import time
+
+SUBNET_IDS = {{vpc_subnet_ids}}
+SG_IDS = {{sg_ids}}
+AVAILABILITY_ZONE='{{subnet.az}}'
+DB_NAME = '{{ db_name }}'
+CLUSTER_ID = '{{cluster_id}}'
+MASTER_USERNAME = '{{master_username}}'
+MASTER_PASSWORD = '{{master_password}}'
+VPC_ID = '{{vpc_id}}'
+REGION = '{{region}}'
+STATE = '{{state}}'
+DELIVERY_STREAM_NAME='ingest'
+BUCKET_NAME = 'bucket-for-redshift-1234'
+
+
+def describe_cluster(redshift_client, cluster_id):
+    response = redshift_client.describe_clusters(
+        ClusterIdentifier=cluster_id,
+        MaxRecords=20,
+        TagKeys=[
+            'name',
+        ],
+        TagValues=[
+            'redshift_automated',
+        ]
+    )
+    return response
+
+
+def get_cluster_jdbc(redshift_client, vpc_id, cluster_id, db_name):
+    response = describe_cluster(redshift_client, cluster_id)
+    clusters = response['Clusters']
+    print clusters
+    i = 0
+    jdbc = 'jdbc:redshift://'
+    while(i < len(clusters)):
+        cluster = clusters[i]
+        if cluster['VpcId'] == vpc_id and cluster['ClusterIdentifier'] == cluster_id:
+            jdbc += cluster['Endpoint']['Address'] + ':' + str(cluster['Endpoint']['Port']) + '/' + db_name
+        i += 1
+
+    return jdbc
+
+
+def is_delivery_stream_running(firehose_client, delivery_stream_name):
+    response = firehose_client.describe_delivery_stream(
+        DeliveryStreamName=delivery_stream_name,
+        Limit=20
+        #ExclusiveStartDestinationId='string'
+    )
+    print response
+    return response['DeliveryStreamDescription']['DeliveryStreamStatus']
+
+
+def delete_delivery_stream(firehose_client, delivery_stream_name):
+    try:
+        response = firehose_client.delete_delivery_stream(
+            DeliveryStreamName=delivery_stream_name
+        )
+        print response
+        while not is_delivery_stream_running(firehose_client, delivery_stream_name) == 'ACTIVE':
+            time.sleep(20)
+    except:
+        print 'delivery stream has been deleted'
+
+
+def create_delivery_stream(firehose_client, redshift_client, vpc_id, cluster_id, db_name, delivery_stream_name,
+                            master_username, master_password, bucket_name):
+    try:
+        jdbc = get_cluster_jdbc(redshift_client, vpc_id, cluster_id, db_name)
+        response = firehose_client.create_delivery_stream(
+            DeliveryStreamName=delivery_stream_name,
+            RedshiftDestinationConfiguration={
+                'RoleARN': 'arn:aws:iam::628340790701:role/firehose_delivery_role',
+                'ClusterJDBCURL': jdbc,
+                'CopyCommand': {
+                    'DataTableName': '{{table_name}}',
+                    #'DataTableColumns': 'string',
+                    'CopyOptions': 'FORMAT AS JSON \'auto\''
+                },
+                'Username': master_username,
+                'Password': master_password,
+                'RetryOptions': {
+                    'DurationInSeconds': 240
+                },
+                'S3Configuration': {
+                    'RoleARN': 'arn:aws:iam::628340790701:role/firehose_delivery_role',
+                    'BucketARN': 'arn:aws:s3:::' + bucket_name,
+                    'Prefix': 'automated-stream',
+                    'BufferingHints': {
+                        'SizeInMBs': 5,
+                        'IntervalInSeconds': 120
+                    },
+                    'CompressionFormat': 'UNCOMPRESSED',
+                    'EncryptionConfiguration': {
+                        'NoEncryptionConfig': 'NoEncryption',
+                        #'KMSEncryptionConfig': {
+                    #        'AWSKMSKeyARN': 'string'
+                    #    }
+                    },
+                    'CloudWatchLoggingOptions': {
+                        'Enabled': False,
+                        #'LogGroupName': 'string',
+                        #'LogStreamName': 'string'
+                    }
+                },
+                'CloudWatchLoggingOptions': {
+                    'Enabled': False,
+                    #'LogGroupName': 'string',
+                    #'LogStreamName': 'string'
+                }
+            }
+        )
+
+        while not is_delivery_stream_running(firehose_client, delivery_stream_name) == 'ACTIVE':
+            time.sleep(20)
+    except:
+        print 'deliver stream already exists'
+
+
+if __name__ == "__main__":
+  redshift_client = boto3.client('redshift', region_name=REGION)
+  firehose_client = boto3.client('firehose', region_name=REGION)
+  if STATE == 'present':
+      create_delivery_stream(firehose_client, redshift_client, VPC_ID, CLUSTER_ID, DB_NAME, DELIVERY_STREAM_NAME,
+                                  MASTER_USERNAME, MASTER_PASSWORD, BUCKET_NAME)
+  elif STATE == 'absent':
+      delete_delivery_stream(firehose_client, DELIVERY_STREAM_NAME)

@@ -1,0 +1,10 @@
+---
+# vars for nifi
+  nifi_version: 0.7.0
+  nifi_package: "nifi-{{nifi_version}}"
+  nifi_tarball: "{{nifi_package}}-bin.tar.gz"
+  nifi_download_url: https://archive.apache.org/dist/nifi/{{nifi_version}}/{{nifi_tarball}}
+  nifi_home: "/opt/{{nifi_package}}"
+  nifi_download_dest: "/tmp/{{nifi_tarball}}"
+
+  nifi_script: "{{nifi_home}}/bin/nifi.sh"

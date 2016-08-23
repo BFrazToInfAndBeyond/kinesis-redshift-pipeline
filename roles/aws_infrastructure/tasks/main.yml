@@ -1,0 +1,8 @@
+---
+  - name: Launch Infrastructure
+    include: launch_infrastructure.yml
+    when: state == 'present'
+
+  - name: Delete Infrastructure
+    include: delete_infrastructure.yml
+    when: state == 'absent'
