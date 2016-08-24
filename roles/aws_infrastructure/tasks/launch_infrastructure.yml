@@ -1,8 +1,23 @@
 ---
+- name: create local dir for nifi key
+  local_action: file path="keys/" state=directory mode=0755
+
+- name: create nifi key pair
+  ec2_key:
+    region: "{{ region }}"
+    name: "{{ nifi_key_name }}"
+    state: present
+  register: nifi_key_pair
+
+- name: save nifi key pair
+  local_action: copy content="{{ item.value.private_key }}" dest="{{ nifi_key_pair_file_name}}" mode=600
+  with_dict: nifi_key_pair
+  when: item.value.private_key is defined
+
 - name: template redshift cluster script
   template: src=../templates/redshift_cluster.py.j2 dest=/tmp/redshift_cluster.py
 
-- name: create redshift cluster
+- name: create redshift cluster. This can take some time.
   shell: python /tmp/redshift_cluster.py
 
 - name: template delivery_stream script
@@ -21,7 +36,7 @@
 - name: create nifi instance
   ec2:
     region: "{{ region }}"
-    key_name: "{{ key_name }}"
+    key_name: "{{ nifi_key_name }}"
     instance_type: "{{ instance_type }}"
     image: "{{ ami }}"
     group_id: "{{ sg_ids[0] }}"
@@ -34,14 +49,14 @@
     count_tag:
       Name: "nifi"
     exact_count: 1
-  register: our_ec2
+  register: ec2_result
 
 - name: Wait for SSH ports
-  wait_for: host={{ our_ec2.tagged_instances[0].public_ip }} port=22 delay=20 timeout=500 state=started
+  wait_for: host={{ ec2_result.tagged_instances[0].public_ip }} port=22 delay=20 timeout=500 state=started
 
 - name: Add instance to nifi group
   add_host:
-    name: "{{ our_ec2.tagged_instances[0].public_ip }}"
-    ansible_ssh_private_key_file: "{{ keypair_file_name }}"
+    name: "{{ ec2_result.tagged_instances[0].public_ip }}"
+    ansible_ssh_private_key_file: "{{ nifi_key_pair_file_name }}"
     ansible_host_key_checking: False
     groups: "nifi"

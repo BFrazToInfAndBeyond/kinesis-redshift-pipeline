@@ -14,7 +14,7 @@
 - name: delete nifi instance
   ec2:
     region: "{{ region }}"
-    key_name: "{{ key_name }}"
+    key_name: "{{ nifi_key_name }}"
     instance_type: "{{ instance_type }}"
     image: "{{ ami }}"
     group_id: "{{ sg_ids[0] }}"
@@ -27,3 +27,15 @@
     count_tag:
       Name: "nifi"
     exact_count: 0
+
+- name: delete nifi key pair
+  ec2_key:
+    region: "{{ region }}"
+    name: "{{ nifi_key_name }}"
+    state: absent
+  register: nifi_key_pair
+
+- name: delete local nifi key pair
+  local_action: file path="{{ nifi_key_pair_file_name }}" state="absent"
+  with_dict: nifi_key_pair
+  when: nifi_key_pair.key == None
