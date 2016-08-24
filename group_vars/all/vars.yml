@@ -11,11 +11,6 @@ ami: 'ami-2b095a1b'
 subnet:
   az: 'us-west-2a'
 
-############## Twitter creds ###################
-consumer_key: 'qKGKArV1X2KdUPqLzvnseaKnP'
-access_token: '3406119592-NXNqFK4V67TOXlBqO1SFfcCz0uIJgIi6ghdazRp'
-consumer_secret: "{{ lookup('env', 'TWITTER_CONSUMER_SECRET') }}"
-access_token_secret: "{{ lookup('env', 'TWITTER_ACCESS_TOKEN_SECRET') }}"
 ################################################
 aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
 aws_secret_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
@@ -27,9 +22,9 @@ delivery_stream_name: "ingest"
 db_name: 'twitter'
 table_name: 'tweets'
 cluster_id: 'gr33n3ggzandham2'
-key_name: "nifi_pipeline-v1"
-keypair_base_dir: "keys/"
-keypair_file_name: "{{keypair_base_dir}}{{ key_name }}.pem"
+nifi_key_name: "nifi_pipeline-v1"
+key_pair_base_dir: "keys/"
+nifi_key_pair_file_name: "{{key_pair_base_dir}}{{ nifi_key_name }}.pem"
 
 instance_type: 't2.small'
 default_remote_user: ec2-user
