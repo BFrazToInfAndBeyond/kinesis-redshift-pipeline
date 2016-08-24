@@ -5,14 +5,17 @@
   - name: create nifi system user
     user: name=nifi state=present system=yes group=nifi
 
-  - name: move jdk rpm to repo folder
-    s3: bucket="{{rpms_bucket}}" object="{{item}}" mode=get aws_access_key="{{aws_access_key}}" aws_secret_key="{{aws_secret_key}}" region="us-west-2" dest="/root/{{item}}"
-    with_items:
-      - "jdk-8.0.0.rpm"
+  - name: install java jdk8
+    yum: name=java-1.8.0-openjdk-devel.x86_64 state=present
 
-  - name: install jdk 8
-    shell: rpm -i "/root/jdk-8.0.0.rpm"
-    ignore_errors: true
+  - name: add JAVA_HOME and JRE_HOME to path
+    blockinfile: |
+              dest=/root/.bash_profile backup=no
+              content="export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk.x86_64/bin/java
+                       export JRE_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.101-3.b13.el6_8.x86_64/jre/bin/java
+                       PATH=$PATH:$HOME/bin:JAVA_HOME:JRE_HOME"
+
+  - shell: source /root/.bash_profile
 
   - name: see if nifi package existence
     stat: path={{ nifi_download_dest }}
@@ -41,11 +44,6 @@
 
 ########### sql workbench ##############
 
-  - name: download 1.8.0 jre
-    get_url: url=http://maven.nuiton.org/nexus/content/repositories/jvm/com/oracle/jre/1.8.0/jre-1.8.0-linux-x64.zip dest=/root
-  - name: unarchive jre
-    unarchive: src=/root/jre-1.8.0-linux-x64.zip dest=/root copy=no
-
   - name: download redshift driver
     get_url: url=https://s3.amazonaws.com/redshift-downloads/drivers/RedshiftJDBC42-1.1.17.1017.jar dest=/root
 
@@ -68,24 +66,31 @@
 
 ##########################################
 
-# add template and instantiate template
-
-  - name: create the twitter kinesis nifi template
-    template: src=../templates/tweets_to_kinesis.xml.j2 dest=/tmp/tweets_to_kinesis.xml
-
-  - shell: curl -X POST -v -F template=@"/tmp/tweets_to_kinesis.xml" http://127.0.0.1:8080/nifi-api/controller/templates
-
-  - shell: curl -X GET http://localhost:8080/nifi-api/controller/
-    register: raw_controller_results
-
-  - set_fact: controller_results="{{ raw_controller_results.stdout | from_json }}"
-
+# add instantiate nifi template
   - shell: curl -X GET http://localhost:8080/nifi-api/controller/templates
-    register: raw_template_results
+    register: initial_raw_template_results
 
-  - set_fact: template_results="{{ raw_template_results.stdout | from_json }}"
+  - set_fact: initial_template_results="{{ initial_raw_template_results.stdout | from_json }}"
 
-  - set_fact: templates_size={{ template_results.templates | length | int }}
+  - set_fact: initial_number_of_templates={{ initial_template_results.templates | length | int }}
 
-  - shell: curl -d "templateId={{template_results.templates[0].id}}" -d "originY=0" -d "originX=0" -d "clientId={{template_results.revision.clientId}}" -d "version=0" http://localhost:8080/nifi-api/controller/process-groups/{{controller_results.controller.id}}/template-instance/
-    when:  templates_size > 0
+  - block:
+
+    - name: create the twitter kinesis nifi template
+      template: src=../templates/tweets_to_kinesis.xml.j2 dest=/tmp/tweets_to_kinesis.xml
+
+    - shell: curl -X POST -v -F template=@"/tmp/tweets_to_kinesis.xml" http://127.0.0.1:8080/nifi-api/controller/templates
+
+    - shell: curl -X GET http://localhost:8080/nifi-api/controller/
+      register: raw_controller_results
+
+    - set_fact: controller_results="{{ raw_controller_results.stdout | from_json }}"
+
+    - shell: curl -X GET http://localhost:8080/nifi-api/controller/templates
+      register: raw_template_results
+
+    - set_fact: template_results="{{ raw_template_results.stdout | from_json }}"
+
+    - shell: curl -d "templateId={{template_results.templates[0].id}}" -d "originY=0" -d "originX=0" -d "clientId={{template_results.revision.clientId}}" -d "version=0" http://localhost:8080/nifi-api/controller/process-groups/{{controller_results.controller.id}}/template-instance/
+
+    when: initial_number_of_templates | int == 0

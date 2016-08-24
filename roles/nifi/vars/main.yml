@@ -8,3 +8,5 @@
   nifi_download_dest: "/tmp/{{nifi_tarball}}"
 
   nifi_script: "{{nifi_home}}/bin/nifi.sh"
+  jre_home: /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.101-3.b13.el6_8.x86_64/jre/bin/java
+  java_home: /usr/lib/jvm/java-1.8.0-openjdk.x86_64/bin/java

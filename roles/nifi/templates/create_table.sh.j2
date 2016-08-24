@@ -1,6 +1,6 @@
 #!/bin/bash
 
-/root/jre/bin/java -jar /opt/sql-workbench//sqlworkbench.jar -username={{master_username}} -password={{master_password}} -url={{hostvars.localhost.jdbc_results.jdbc}} -driver=com.amazon.redshift.jdbc42.Driver -driverJar=/root/RedshiftJDBC42-1.1.17.1017.jar -command <<SQLCMD
+{{jre_home}} -jar /opt/sql-workbench//sqlworkbench.jar -username={{master_username}} -password={{master_password}} -url={{hostvars.localhost.jdbc_results.jdbc}} -driver=com.amazon.redshift.jdbc42.Driver -driverJar=/root/RedshiftJDBC42-1.1.17.1017.jar -command <<SQLCMD
 SET autocommit ON;
 create table tweets(
 tweetid BIGINT not null,

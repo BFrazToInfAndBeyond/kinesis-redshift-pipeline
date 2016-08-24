@@ -22,12 +22,9 @@ delivery_stream_name: "ingest"
 db_name: 'twitter'
 table_name: 'tweets'
 cluster_id: 'gr33n3ggzandham2'
-nifi_key_name: "nifi_pipeline-v1"
+key_name: "nifi_pipeline-v1"
 key_pair_base_dir: "keys/"
-nifi_key_pair_file_name: "{{key_pair_base_dir}}{{ nifi_key_name }}.pem"
+key_pair_file_name: "{{key_pair_base_dir}}{{ key_name }}.pem"
 
 instance_type: 't2.small'
 default_remote_user: ec2-user
-
-java_home: /usr/java/jdk1.8.0_45
-rpms_bucket: 'rpms-1234-west-2'
