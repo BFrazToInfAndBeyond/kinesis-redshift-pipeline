@@ -74,11 +74,14 @@ def is_subnet_running(client, cluster_subnet_group_name, vpc_id):
     return subnet_running
 
 
-def delete_cluster_subnet_group(client, cluster_subnet_group_name):
+def delete_cluster_subnet_group(client, cluster_subnet_group_name, vpc_id):
     try:
         response = client.delete_cluster_subnet_group(
             ClusterSubnetGroupName=cluster_subnet_group_name
         )
+        while is_subnet_running(client, cluster_subnet_group_name, vpc_id):
+            time.sleep(30)
+
     except:
         print 'cluster subnet has already been deleted'
 
@@ -169,4 +172,4 @@ if __name__ == "__main__":
                       CLUSTER_SUBNET_GROUP_NAME, AVAILABILITY_ZONE, VPC_ID)
   elif STATE == 'absent':
       delete_cluster(client, CLUSTER_ID, VPC_ID)
-      delete_cluster_subnet_group(client, CLUSTER_SUBNET_GROUP_NAME)
+      delete_cluster_subnet_group(client, CLUSTER_SUBNET_GROUP_NAME, VPC_ID)
