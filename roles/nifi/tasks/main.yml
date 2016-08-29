@@ -5,18 +5,6 @@
   - name: create nifi system user
     user: name=nifi state=present system=yes group=nifi
 
-  - name: install java jdk8
-    yum: name=java-1.8.0-openjdk-devel.x86_64 state=present
-
-  - name: add JAVA_HOME and JRE_HOME to path
-    blockinfile: |
-              dest=/root/.bash_profile backup=no
-              content="export JAVA_HOME={{java_home}}
-                       export JRE_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.101-3.b13.el6_8.x86_64/jre/bin/java
-                       PATH=$PATH:$HOME/bin:JAVA_HOME:JRE_HOME"
-
-  - shell: source /root/.bash_profile
-
   - name: see if nifi package existence
     stat: path={{ nifi_download_dest }}
     register: nifi_exists
@@ -43,6 +31,12 @@
     wait_for: host=127.0.0.1 port=8080 delay=10 timeout=700
 
 ########### sql workbench ##############
+
+  - name: download 1.8.0 jre
+    get_url: url=http://maven.nuiton.org/nexus/content/repositories/jvm/com/oracle/jre/1.8.0/jre-1.8.0-linux-x64.zip dest=/root
+
+  - name: unarchive jre
+    unarchive: src=/root/jre-1.8.0-linux-x64.zip dest=/root copy=no
 
   - name: download redshift driver
     get_url: url=https://s3.amazonaws.com/redshift-downloads/drivers/RedshiftJDBC42-1.1.17.1017.jar dest=/root
