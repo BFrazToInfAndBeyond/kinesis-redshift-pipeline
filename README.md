@@ -17,12 +17,22 @@ pip install --upgrade pip (obtain version 8.1.2 for pip)
 pip install -r requirements.txt
 
 
-Also, be sure to install the aws cli!
-
 ###AWS Credentials
+Install the aws cli
 
-The playbook will use the default credentials in ~/.aws/credentials.
-You can use the aws configure command to set the file up or it can be done manually.
+Set the default credentials in ~/.aws/credentials.
+The aws configure command can be used as an alternative. Below, is an example
+```
+[default]
+aws_access_key_id=YOUR_ACCESS_KEY
+aws_secret_access_key=
+```
+
+Set the credentials in your bash_profile. Be sure to source the profile once set.
+```
+export AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+export AWS_SECRET_ACCESS_KEY=SECRET
+```
 
 ###1) Update Variables
 
