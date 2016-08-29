@@ -45,6 +45,7 @@
   when: nifi_key_pair.key == None
 
 ### remove policies to firehose role
+#TODO: need to wait until redhshift and kinesis firehose are deleted before deleting roles
 - name: remove s3 full access for firehose role
   shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --role-name {{firehose_delivery_role_name}}
 
