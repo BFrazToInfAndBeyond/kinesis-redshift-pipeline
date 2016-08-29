@@ -58,10 +58,9 @@
 - set_fact: redshift_role_info="{{ raw_redshift_role_info.stdout | from_json }}"
 
 - set_fact: firehose_role_arn="{{firehose_role_info.Role.Arn}}"
+
 - set_fact: redshift_role_arn="{{redshift_role_info.Role.Arn}}"
 
-# - debug: var=firehose_role_arn
-# - debug: var=redshift_role_arn
 
 - name: create key dir
   local_action: file path="keys/" state=directory mode=0755
@@ -73,6 +72,7 @@
 
 - name: template redshift cluster script
   template: src=../templates/redshift_cluster.py.j2 dest=/tmp/redshift_cluster.py
+
 
 - name: create redshift cluster. This can take some time.
   shell: python /tmp/redshift_cluster.py
