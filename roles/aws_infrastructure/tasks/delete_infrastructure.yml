@@ -1,4 +1,8 @@
 ---
+- set_fact: firehose_role_arn="empty"
+
+- set_fact: redshift_role_arn="empty"
+
 - name: template redshift cluster script
   template: src=../templates/redshift_cluster.py.j2 dest=/tmp/redshift_cluster.py
 
@@ -39,3 +43,32 @@
   local_action: file path="{{ nifi_key_pair_file_name }}" state="absent"
   with_dict: nifi_key_pair
   when: nifi_key_pair.key == None
+
+### remove policies to firehose role
+- name: remove s3 full access for firehose role
+  shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --role-name {{firehose_delivery_role_name}}
+
+- name: remove full access to redshift for firehose role
+  shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonRedshiftFullAccess --role-name {{firehose_delivery_role_name}}
+
+- name: remove full access to kinesis for firehose role
+  shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonKinesisFullAccess --role-name {{firehose_delivery_role_name}}
+
+- name: remove full access to firehose delivery streams for firehose role
+  shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonKinesisFirehoseFullAccess --role-name {{firehose_delivery_role_name}}
+###################################
+
+##### remove policies to redshift role
+- name: remove s3 full access policy for redshift role
+  shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --role-name {{redshift_role_name}}
+
+- name: remove access to manage S3 settings for Redshift endpoints for DMS.
+  shell: aws iam detach-role-policy --policy-arn arn:aws:iam::aws:policy/service-role/AmazonDMSRedshiftS3Role --role-name {{redshift_role_name}}
+###################################
+
+### delete iam roles
+- name: delete redshift role
+  shell: aws iam delete-role --role-name {{redshift_role_name}}
+
+- name: delete firehose delivery role
+  shell: aws iam delete-role --role-name {{firehose_delivery_role_name}}

@@ -148,13 +148,7 @@ def create_cluster(client, db_name, cluster_id, master_username, master_password
                     'Value': 'redshift_automated'
                 },
             ],
-            IamRoles=['arn:aws:iam::628340790701:role/redshift_role']
-
-                #  {
-                # 'IamRoleArn': 'arn:aws:iam::628340790701:role/redshift_role', #NOTE: 2 policies: AmazonDMSRedshiftS3Role, AmazonS3FullAccess. Already created
-                # 'ApplyStatus': 'in-sync'
-                # }
-
+            IamRoles=['{{redshift_role_arn}}']
 
         )
 

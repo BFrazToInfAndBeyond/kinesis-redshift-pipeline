@@ -9,6 +9,63 @@
     state: present
   register: nifi_key_pair
 
+### create iam roles
+- name: copy redshift policy
+  copy: src=../files/redshift_policy.json dest=/tmp/redshift_policy.json
+
+- name: copy firehose delivery policy
+  copy: src=../files/firehose_delivery_policy.json dest=/tmp/firehose_delivery_policy.json
+
+- name: create redshift role
+  shell: aws iam create-role --role-name {{redshift_role_name}} --assume-role-policy-document file:///tmp/redshift_policy.json
+  ignore_errors: true
+
+- name: create firehose role
+  shell: aws iam create-role --role-name {{firehose_delivery_role_name}} --assume-role-policy-document file:///tmp/firehose_delivery_policy.json
+  ignore_errors: true
+###################################
+### add policies to firehose role
+- name: add s3 full access for firehose role
+  shell: aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --role-name {{firehose_delivery_role_name}}
+
+- name: add full access to redshift for firehose role
+  shell: aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonRedshiftFullAccess --role-name {{firehose_delivery_role_name}}
+
+- name: add full access to kinesis for firehose role
+  shell: aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonKinesisFullAccess --role-name {{firehose_delivery_role_name}}
+
+- name: add full access to firehose delivery streams for firehose role
+  shell: aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonKinesisFirehoseFullAccess --role-name {{firehose_delivery_role_name}}
+###################################
+
+##### add policies to redshift role
+- name: add s3 full access policy for redshift role
+  shell: aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess --role-name {{redshift_role_name}}
+
+- name: allow access to manage S3 settings for Redshift endpoints for DMS.
+  shell: aws iam attach-role-policy --policy-arn arn:aws:iam::aws:policy/service-role/AmazonDMSRedshiftS3Role --role-name {{redshift_role_name}}
+###################################
+- name: get firehose role
+  shell: aws iam get-role --role-name {{firehose_delivery_role_name}}
+  register: raw_firehose_role_info
+
+- name: get redshift role
+  shell: aws iam get-role --role-name {{redshift_role_name}}
+  register: raw_redshift_role_info
+
+- set_fact: firehose_role_info="{{ raw_firehose_role_info.stdout | from_json }}"
+
+- set_fact: redshift_role_info="{{ raw_redshift_role_info.stdout | from_json }}"
+
+- set_fact: firehose_role_arn="{{firehose_role_info.Role.Arn}}"
+- set_fact: redshift_role_arn="{{redshift_role_info.Role.Arn}}"
+
+# - debug: var=firehose_role_arn
+# - debug: var=redshift_role_arn
+
+- name: create key dir
+  local_action: file path="keys/" state=directory mode=0755
+
 - name: save nifi key pair
   local_action: copy content="{{ item.value.private_key }}" dest="{{ nifi_key_pair_file_name}}" mode=600
   with_dict: nifi_key_pair

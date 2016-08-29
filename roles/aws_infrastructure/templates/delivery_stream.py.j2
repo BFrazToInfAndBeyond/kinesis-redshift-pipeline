@@ -12,7 +12,7 @@ VPC_ID = '{{vpc_id}}'
 REGION = '{{region}}'
 STATE = '{{state}}'
 DELIVERY_STREAM_NAME='ingest'
-BUCKET_NAME = 'bucket-for-redshift-1234'
+BUCKET_NAME = '{{bucket_for_redshift}}'
 
 
 def describe_cluster(redshift_client, cluster_id):
@@ -73,7 +73,7 @@ def create_delivery_stream(firehose_client, redshift_client, vpc_id, cluster_id,
         response = firehose_client.create_delivery_stream(
             DeliveryStreamName=delivery_stream_name,
             RedshiftDestinationConfiguration={
-                'RoleARN': 'arn:aws:iam::628340790701:role/firehose_delivery_role',
+                'RoleARN': '{{firehose_role_arn}}',
                 'ClusterJDBCURL': jdbc,
                 'CopyCommand': {
                     'DataTableName': '{{table_name}}',
@@ -86,12 +86,12 @@ def create_delivery_stream(firehose_client, redshift_client, vpc_id, cluster_id,
                     'DurationInSeconds': 240
                 },
                 'S3Configuration': {
-                    'RoleARN': 'arn:aws:iam::628340790701:role/firehose_delivery_role',
+                    'RoleARN': '{{firehose_role_arn}}',
                     'BucketARN': 'arn:aws:s3:::' + bucket_name,
                     'Prefix': 'automated-stream',
                     'BufferingHints': {
-                        'SizeInMBs': 5,
-                        'IntervalInSeconds': 120
+                        'SizeInMBs': 1,
+                        'IntervalInSeconds': 60
                     },
                     'CompressionFormat': 'UNCOMPRESSED',
                     'EncryptionConfiguration': {

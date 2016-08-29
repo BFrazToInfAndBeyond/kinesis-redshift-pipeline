@@ -22,6 +22,9 @@ master_username: "bryce"
 master_password: "Bryce123"
 delivery_stream_name: "ingest"
 
+redshift_role_name: 'redshift_twitter_pipeline'
+firehose_delivery_role_name: 'firehose_delivery_twitter_pipeline'
+
 db_name: 'twitter'
 table_name: 'tweets'
 cluster_id: 'gr33n3ggzandham2'
