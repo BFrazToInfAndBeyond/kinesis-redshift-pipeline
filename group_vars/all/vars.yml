@@ -1,3 +1,4 @@
+################ vars to update ################
 region: 'us-west-2'
 
 vpc_id: 'vpc-60785004'
@@ -10,6 +11,8 @@ sg_ids: ['sg-f3dfd695']
 ami: 'ami-2b095a1b'
 subnet:
   az: 'us-west-2a'
+
+bucket_for_redshift: 'bucket-for-redshift-1234'
 
 ################################################
 aws_access_key: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"

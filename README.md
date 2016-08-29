@@ -16,19 +16,33 @@ pip install --upgrade pip (obtain version 8.1.2 for pip)
 
 pip install -r requirements.txt
 
+
+Also, be sure to install the aws cli!
+
+###AWS Credentials
+
+The playbook will use the default credentials in ~/.aws/credentials.
+You can use the aws configure command to set the file up or it can be done manually.
+
 ###1) Update Variables
 
 in group_vars/all/vars.yml
 update the following variables:
-region, vpc_id, vpc_subnet_ids, sg_ids, ami, and the subent az
+region, vpc_id, vpc_subnet_ids, sg_ids, ami, bucket_for_redshift, and the subent az
 
-Also, be sure to update your aws credentials!
 
 ###2) Update Security Group
+
 The first security group id listed in 'sg_ids' will be used for nifi.
 Be sure to open port 8080 to the desired ip addresses (0.0.0.0 for to open it up to anyone)
 
+For the default sg, allow the cidr block for the respective firehose (varies by region).
+
+Firehose currently uses one CIDR block for each available AWS Region:
+52.70.63.192/27 for US East (N. Virginia), 52.89.255.224/27 for US West (Oregon), and 52.19.239.192/27 for EU (Ireland).
+
 ###3) Run the playbook
+
 `ansible-playbook "-e state=present" nifi_pipeline.yml`
 
 This command will start the redshift cluster, the kinesis delivery stream, the nifi instance,
@@ -36,6 +50,7 @@ and populate nifi with a data pipeline to ingest tweets into kinesis.
 The pipeline requires the user to manually select 'play'.
 
 ###4) Start Data Pipeline
+
 go to the ui of nifi with: http://ip_address_of_nifi:8080/nifi
 
 Update the twitter creds in the 'GetTwitter' processor: consumer_key, access_token, consumer_secret, access_token_secret.
@@ -44,6 +59,7 @@ NOTE: The 'GetTwitter' processor can be found in the 'GetTweets' processor group
 Start the pipeline! Twitter tweets will be now ingested into redshift via kinesis.
 
 ###5) Shutdown the pipeline and Nifi instance
+
 `ansible-playbook "-e state=absent" nifi_pipeline.yml`
 
 This will terminate the nifi instance, the kinesis delivery stream, as well as the
