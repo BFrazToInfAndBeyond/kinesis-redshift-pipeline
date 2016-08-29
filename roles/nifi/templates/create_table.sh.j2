@@ -4,10 +4,10 @@
 SET autocommit ON;
 create table tweets(
 tweetid BIGINT not null,
-username varchar(100) not null,
-handle varchar(150),
-hashtags varchar(150),
-msg varchar(150),
+username varchar(800) not null,
+handle varchar(800),
+hashtags varchar(800),
+msg varchar(800),
 unixtime BIGINT not null
 );
 SQLCMD
